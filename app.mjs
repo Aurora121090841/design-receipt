@@ -319,11 +319,6 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
   const { paper, ink, accent } = brand;
   const defaultInk = ink === defaultColors.ink && paper === defaultColors.paper;
   const detailInk = defaultInk ? '#67586f' : ink;
-  const [red, green, blue] = [1, 3, 5].map(index => {
-    const channel = parseInt(accent.slice(index, index + 2), 16) / 255;
-    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-  });
-  const tagInk = red * 0.2126 + green * 0.7152 + blue * 0.0722 > 0.179 ? '#000' : '#fff';
   const draw = [];
   const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh') : null;
   function write(text, { size = 15, bold = false, align = 'left', color = ink, max = end - edge, tag = '' } = {}) {
@@ -357,7 +352,7 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
             ctx.font = tagFont;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
-            ctx.fillStyle = tagInk;
+            ctx.fillStyle = paper;
             const labelX = tagX + (tagWidth + tagMetrics.actualBoundingBoxLeft - tagMetrics.actualBoundingBoxRight) / 2;
             const labelY = titleCenter + (tagMetrics.actualBoundingBoxAscent - tagMetrics.actualBoundingBoxDescent) / 2;
             ctx.fillText(tag, labelX, labelY);
