@@ -329,15 +329,22 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
   function write(text, { size = 15, bold = false, align = 'left', color = ink, max = end - edge, tag = '' } = {}) {
     const type = (bold ? '700 ' : '400 ') + size + 'px ' + font;
     const tagFont = '400 16px ' + font;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     ctx.font = tagFont;
-    const tagWidth = tag ? Math.ceil(ctx.measureText(tag).width) + 24 : 0;
-    const tagGap = 7;
+    const tagMetrics = ctx.measureText(tag);
+    const tagWidth = tag ? Math.ceil(tagMetrics.actualBoundingBoxLeft + tagMetrics.actualBoundingBoxRight) + 22 : 0;
+    const tagHeight = Math.max(22, Math.ceil(tagMetrics.actualBoundingBoxAscent + tagMetrics.actualBoundingBoxDescent) + 8);
+    const tagGap = 8;
+    ctx.textBaseline = 'top';
     ctx.font = type;
     for (const paragraph of String(text).split('\n')) {
       let line = '';
       const queue = (value, withTag = false) => {
         const baseline = y;
-        const tagX = edge + Math.ceil(ctx.measureText(value).width) + tagGap;
+        const titleMetrics = ctx.measureText(value);
+        const tagX = edge + Math.ceil(titleMetrics.actualBoundingBoxRight) + tagGap;
+        const titleCenter = baseline + (titleMetrics.actualBoundingBoxDescent - titleMetrics.actualBoundingBoxAscent) / 2;
         draw.push(() => {
           ctx.font = type;
           ctx.textAlign = align;
@@ -346,12 +353,14 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
           ctx.fillText(value, align === 'center' ? width / 2 : align === 'right' ? end : edge, baseline);
           if (withTag) {
             ctx.fillStyle = accent;
-            ctx.fillRect(tagX, baseline + 1, tagWidth, 20);
+            ctx.fillRect(tagX, titleCenter - tagHeight / 2, tagWidth, tagHeight);
             ctx.font = tagFont;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
             ctx.fillStyle = tagInk;
-            ctx.fillText(tag, tagX + tagWidth / 2, baseline + 11);
+            const labelX = tagX + (tagWidth + tagMetrics.actualBoundingBoxLeft - tagMetrics.actualBoundingBoxRight) / 2;
+            const labelY = titleCenter + (tagMetrics.actualBoundingBoxAscent - tagMetrics.actualBoundingBoxDescent) / 2;
+            ctx.fillText(tag, labelX, labelY);
           }
         });
         y += size * 1.47;
