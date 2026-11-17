@@ -409,10 +409,6 @@ function drawTicket({ lines, subtotal, usage, rush, privacy, pieces, discount, t
 }
 function refresh() {
   const result = quote(order.items, order);
-  $('usage-terms').textContent = terms[order.usage] || '';
-  const eligible = order.usage === 'commercial' || order.usage === 'buyout';
-  const discountText = eligible ? ' · Set ' + result.pieces + ' 件（' + (result.discount === 1 ? '原价' : result.discount * 10 + ' 折') + '）' : '';
-  $('billing-summary').textContent = '项目小计 × ' + (result.usage + result.privacy) + (result.privacy ? '（用途 ' + result.usage + ' + 不公开 ' + result.privacy + '）' : '（用途）') + ' × ' + result.rush + '（加急）' + discountText;
   result.lines.forEach((line, index) => {
     $('items').children[index].querySelector('output').textContent = money(line.amount);
   });
