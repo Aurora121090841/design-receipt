@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="为美工约稿计算报价、定制票头并导出 PNG 小票。">
   <title>美工约稿小票</title>
-  <link rel="stylesheet" href="style.css?v=9">
-  <script type="module" src="app.mjs?v=14"></script>
+  <link rel="stylesheet" href="style.css?v=15">
+  <script type="module" src="app.mjs?v=15"></script>
 </head>
 <body>
   <header class="masthead">
-    <div class="wrap top"><span class="brand"><span aria-hidden="true">✳</span> 约稿工作台</span><div class="top-actions"><a href="#preview" class="quiet jump">看小票</a><button id="reset" class="quiet">新建小票</button></div></div>
+    <div class="wrap top"><span class="brand"><span aria-hidden="true">✳</span> 约稿工作台</span><div class="top-actions"><a href="#preview" class="quiet jump">看小票</a><button id="show-history" class="quiet">历史小票</button><button id="reset" class="quiet">新建小票</button></div></div>
   </header>
   <main class="wrap">
     <div class="intro"><h1>美工约稿小票</h1><p>选好设计项目，自动算价，出一张送给客妹的小票。</p></div>
@@ -67,6 +67,13 @@
       </aside>
     </div>
   </main>
+  <dialog id="history-dialog" aria-labelledby="history-title">
+    <div class="heading"><h2 id="history-title">历史小票</h2><button id="close-history" class="quiet" aria-label="关闭">✕</button></div>
+    <p class="hint">开始新单或切换小票时，当前草稿会保存在此浏览器。</p>
+    <p id="history-empty" class="hint">还没有历史小票。</p>
+    <ul id="history-rows"></ul>
+    <p id="history-status" class="hint" role="status"></p>
+  </dialog>
   <dialog id="price-dialog">
     <form id="price-form">
       <div class="heading"><h2>常用报价</h2><button type="button" id="close" class="quiet" aria-label="关闭">✕</button></div>

@@ -31,13 +31,30 @@ function loadCatalog(snapshot) {
 }
 let catalog = loadCatalog(saved);
 let order = { ...newOrder(), ...saved?.order };
-let brand = { title: '', designer: '', logo: '', ...defaultColors, ...saved?.brand };
+function readBrand(snapshot) {
+  const profile = { title: '', designer: '', logo: '', ...defaultColors, ...snapshot };
+  if (typeof profile.logo === 'number') profile.logo = saved.logos?.[profile.logo] ?? '';
+  return profile;
+}
+let brand = readBrand(saved?.brand);
+let history = (saved?.history ?? []).map(record => ({ ...record, brand: readBrand(record.brand) }));
 let logoImage;
 let logoRequest = 0;
 
 function save() {
   try {
-    localStorage.setItem(key, JSON.stringify({ menuVersion: 1, catalog: catalog === defaults ? null : catalog, order, brand }));
+    const logos = new Map();
+    function storeBrand(profile) {
+      if (!profile.logo) return profile;
+      if (!logos.has(profile.logo)) logos.set(profile.logo, logos.size);
+      return { ...profile, logo: logos.get(profile.logo) };
+    }
+    const activeBrand = storeBrand(brand);
+    const records = history.map(record => ({ ...record, brand: storeBrand(record.brand) }));
+    localStorage.setItem(key, JSON.stringify({
+      menuVersion: 1, catalog: catalog === defaults ? null : catalog, order,
+      brand: activeBrand, history: records, logos: [...logos.keys()]
+    }));
     return true;
   } catch {
     $('status').textContent = '浏览器存储不可用或已满，本次修改可能无法保留。';
@@ -212,16 +229,55 @@ $('reset-colors').onclick = () => {
   save();
 };
 
-$('reset').onclick = () => {
-  if (order.items.length || order.client || order.deadline || order.note) {
-    if (!confirm('清空当前委托和项目，开始一张新小票？')) return;
+function switchReceipt(record) {
+  const previous = { order, brand, history };
+  const hasDraft = order.items.length || order.client.trim() || order.deadline || order.note.trim();
+  const wasOpenedFromHistory = order.savedAt !== undefined;
+  history = history.filter(entry => entry !== record);
+  if (hasDraft || wasOpenedFromHistory) history = [{ order, brand, savedAt: Date.now() }, ...history];
+  order = record ? { ...record.order, savedAt: record.savedAt } : newOrder();
+  brand = { ...(record?.brand ?? brand) };
+  if (!save()) {
+    ({ order, brand, history } = previous);
+    return false;
   }
-  order = newOrder();
   syncFields();
+  restoreLogo();
   renderItems();
-  save();
-  $('client').focus();
+  return true;
+}
+
+$('reset').onclick = () => {
+  if (switchReceipt()) {
+    $('client').focus();
+  } else {
+    alert('浏览器存储不可用或已满。当前小票仍在编辑中。');
+  }
 };
+$('show-history').onclick = () => {
+  $('history-status').textContent = '';
+  $('history-empty').hidden = history.length > 0;
+  $('history-rows').replaceChildren(...history.map(record => {
+    const row = node('li', 'history-row');
+    const info = node('div');
+    const { order, savedAt } = record;
+    const name = order.client.trim() || order.items[0]?.name.trim() || '未命名小票';
+    const date = new Date(savedAt).toLocaleString('zh-CN', { dateStyle: 'medium', timeStyle: 'short' });
+    info.append(node('strong', '', name), node('p', 'hint', '#' + order.code + ' · ' + order.items.length + ' 项 · ' + date));
+    row.append(info, button('打开编辑', () => {
+      if (!switchReceipt(record)) {
+        $('history-status').textContent = '切换失败，当前小票仍在编辑中。请检查浏览器存储。';
+        return;
+      }
+      $('history-dialog').close();
+      $('client').focus();
+    }));
+    return row;
+  }));
+  $('history-dialog').showModal();
+};
+$('close-history').onclick = () => $('history-dialog').close();
+
 $('custom').onclick = () => addItem();
 
 function priceRow(entry = { name: '', price: '' }) {
@@ -486,12 +542,19 @@ $('download').onclick = () => {
 syncFields();
 renderCatalog();
 renderItems();
-if (brand.logo) {
-  const request = logoRequest;
+restoreLogo();
+
+function restoreLogo() {
+  const request = ++logoRequest;
+  logoImage = undefined;
+  $('remove-logo').hidden = !brand.logo;
+  $('logo-status').textContent = '';
+  if (!brand.logo) return;
   loadImage(brand.logo).then(image => {
     if (request !== logoRequest) return;
     logoImage = image;
-    $('remove-logo').hidden = false;
     refresh();
-  }).catch(() => { $('logo-status').textContent = '已保存的抬头图案无法读取，请重新上传。'; });
+  }).catch(() => {
+    if (request === logoRequest) $('logo-status').textContent = '已保存的抬头图案无法读取，请重新上传。';
+  });
 }
