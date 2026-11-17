@@ -55,8 +55,3 @@ export const extras = {
   layer: { name: '异形吧唧工艺', price: '5', unit: '层', craft: true },
   side: { name: '侧面', price: '10', unit: '次' }
 };
-
-export const terms = {
-  commercial: '开团一次（两次补断）／sxp／fys。不可转稿、二改或一稿多用。',
-  buyout: '交付 PNG＋PSD，可二改、转稿、一稿多用。后续补断可能已无 PSD。可按约定随机赠制品或免工艺费。'
-};

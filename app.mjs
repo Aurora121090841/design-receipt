@@ -1,5 +1,5 @@
 import { cents, money, quote, usageLabels } from './pricing.mjs?v=6';
-import { defaults, extras, terms } from './catalog.mjs';
+import { defaults, extras } from './catalog.mjs?v=8';
 
 const $ = id => document.getElementById(id);
 const orderFields = ['client', 'deadline', 'note', 'usage', 'multiplier', 'visibility', 'rush'];
@@ -410,13 +410,10 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
   write('合计', { size: 17, bold: true });
   y -= 25;
   write(money(total), { size: 24, bold: true, align: 'right' });
-  const usages = new Set(lines.map(line => line.usage));
-  if ([...usages].some(usage => terms[usage]) || order.note.trim() || brand.designer.trim()) {
+  const gift = order.gift && lines.some(line => line.usage === 'buyout');
+  if (gift || order.note.trim() || brand.designer.trim()) {
     rule('dashed');
-    for (const usage of usages) {
-      if (terms[usage]) write(usageLabels[usage] + '  ' + terms[usage], { size: 13 });
-    }
-    if (usages.has('buyout') && order.gift) write('本单随机赠制品', { size: 13 });
+    if (gift) write('本单随机赠制品', { size: 13 });
     if (order.note.trim()) write('备注  ' + order.note.trim(), { size: 13 });
     if (brand.designer.trim()) write('受托人  ' + brand.designer.trim(), { size: 13 });
   }
