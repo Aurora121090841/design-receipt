@@ -4,7 +4,7 @@ import { defaults, extras } from './catalog.mjs?v=8';
 const $ = id => document.getElementById(id);
 const orderFields = ['client', 'deadline', 'note', 'usage', 'multiplier', 'visibility', 'rush'];
 const orderChecks = ['waiveCraft', 'gift'];
-const defaultColors = { paper: '#fffdf8', ink: '#322b36' };
+const defaultColors = { paper: '#fffdf8', ink: '#322b36', accent: '#000000' };
 const brandFields = ['title', 'designer', ...Object.keys(defaultColors)];
 const key = 'design-receipt-v1';
 const newOrder = () => ({
@@ -316,9 +316,14 @@ const end = width - edge;
 const font = getComputedStyle(document.documentElement).getPropertyValue('--serif');
 function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
   let y = 35;
-  const { paper, ink } = brand;
+  const { paper, ink, accent } = brand;
   const defaultInk = ink === defaultColors.ink && paper === defaultColors.paper;
   const detailInk = defaultInk ? '#67586f' : ink;
+  const [red, green, blue] = [1, 3, 5].map(index => {
+    const channel = parseInt(accent.slice(index, index + 2), 16) / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  const tagInk = red * 0.2126 + green * 0.7152 + blue * 0.0722 > 0.179 ? '#000' : '#fff';
   const draw = [];
   const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh') : null;
   function write(text, { size = 15, bold = false, align = 'left', color = ink, max = end - edge, tag = '' } = {}) {
@@ -340,12 +345,12 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
           ctx.fillStyle = color;
           ctx.fillText(value, align === 'center' ? width / 2 : align === 'right' ? end : edge, baseline);
           if (withTag) {
-            ctx.fillStyle = defaultInk ? '#000' : ink;
+            ctx.fillStyle = accent;
             ctx.fillRect(tagX, baseline + 1, tagWidth, 20);
             ctx.font = tagFont;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = paper;
+            ctx.fillStyle = tagInk;
             ctx.fillText(tag, tagX + tagWidth / 2, baseline + 11);
           }
         });
