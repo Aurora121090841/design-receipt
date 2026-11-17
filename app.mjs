@@ -439,7 +439,10 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
     rule('dashed');
     if (gift) write('本单随机赠制品', { size: 13 });
     if (order.note.trim()) write('备注  ' + order.note.trim(), { size: 13 });
-    if (brand.designer.trim()) write('受托人  ' + brand.designer.trim(), { size: 13 });
+    if (brand.designer.trim()) {
+      if (gift || order.note.trim()) y += 10;
+      write('Designed by ' + brand.designer.trim(), { size: 13, align: 'center' });
+    }
   }
   y += 25;
   // ponytail: cap the printable height to fit mobile Safari's canvas limits.
