@@ -306,35 +306,49 @@ const width = 420;
 const edge = 27;
 const end = width - edge;
 const font = getComputedStyle(document.documentElement).getPropertyValue('--serif');
-function drawTicket({ lines, subtotal, rush, privacy, pieces, discount, total }) {
+function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
   let y = 35;
   const draw = [];
   const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh') : null;
-  function write(text, { size = 15, bold = false, align = 'left', color = '#322b36', max = end - edge } = {}) {
+  function write(text, { size = 15, bold = false, align = 'left', color = '#322b36', max = end - edge, tag = '' } = {}) {
     const type = (bold ? '700 ' : '400 ') + size + 'px ' + font;
+    const tagFont = '400 16px ' + font;
+    ctx.font = tagFont;
+    const tagWidth = tag ? Math.ceil(ctx.measureText(tag).width) + 24 : 0;
+    const tagGap = 7;
     ctx.font = type;
     for (const paragraph of String(text).split('\n')) {
       let line = '';
-      const queue = value => {
+      const queue = (value, withTag = false) => {
         const baseline = y;
+        const tagX = edge + Math.ceil(ctx.measureText(value).width) + tagGap;
         draw.push(() => {
           ctx.font = type;
           ctx.textAlign = align;
           ctx.textBaseline = 'top';
           ctx.fillStyle = color;
           ctx.fillText(value, align === 'center' ? width / 2 : align === 'right' ? end : edge, baseline);
+          if (withTag) {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(tagX, baseline + 1, tagWidth, 20);
+            ctx.font = tagFont;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fffdf8';
+            ctx.fillText(tag, tagX + tagWidth / 2, baseline + 11);
+          }
         });
         y += size * 1.47;
       };
       const characters = segmenter ? Array.from(segmenter.segment(paragraph), part => part.segment) : Array.from(paragraph);
       for (const segment of characters) {
-        if (line && ctx.measureText(line + segment).width > max) {
+        if (line && ctx.measureText(line + segment).width > max - (tag ? tagWidth + tagGap : 0)) {
           queue(line);
           line = '';
         }
         line += segment;
       }
-      queue(line);
+      queue(line, Boolean(tag));
     }
   }
   function rule(kind) {
@@ -376,7 +390,8 @@ function drawTicket({ lines, subtotal, rush, privacy, pieces, discount, total })
   rule('dashed');
   if (!lines.length) write('添加设计项目后，费用明细会显示在这里。', { size: 13, color: '#67586f' });
   for (const line of lines) {
-    write(line.name.trim() || '自定义项目', { size: 18, bold: true });
+    const tag = line.usage === 'personal' ? '自用' : usageLabels[line.usage];
+    write(line.name.trim() || '自定义项目', { size: 18, bold: true, tag });
     const group = line.group.trim() ? ' · 同模组 ' + line.group.trim() : '';
     write(money(cents(line.price)) + ' × ' + (line.quantity || '0') + group, { size: 13, color: '#67586f' });
     write('用途  ' + usageLabels[line.usage] + ' ×' + line.rate + (line.discount < 1 ? ' · Set ' + line.discount * 10 + ' 折' : ''), { size: 13 });
@@ -389,7 +404,6 @@ function drawTicket({ lines, subtotal, rush, privacy, pieces, discount, total })
     rule('solid');
   }
   write('项目小计  ' + money(subtotal), { size: 14 });
-  write('公开设置  ' + ($('visibility').value === 'private' ? '不公开' : '可公开') + (privacy ? '（各项用途倍率 +' + privacy + '）' : ''), { size: 14 });
   if (rush > 1) write('加急  ' + $('rush').selectedOptions[0].textContent, { size: 14 });
   if (discount < 1) write('Set 折扣  ' + pieces + ' 件 · ' + (discount * 10) + ' 折', { size: 14 });
   rule('double');
