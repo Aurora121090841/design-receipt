@@ -1,4 +1,4 @@
-import { cents, money, quote } from './pricing.mjs?v=2';
+import { cents, money, quote } from './pricing.mjs?v=3';
 import { defaults, extras, terms } from './catalog.mjs';
 
 const $ = id => document.getElementById(id);
@@ -293,7 +293,7 @@ const width = 420;
 const edge = 27;
 const end = width - edge;
 const font = getComputedStyle(document.documentElement).getPropertyValue('--serif');
-function drawTicket({ lines, subtotal, usage, rush, visibility, pieces, discount, total }) {
+function drawTicket({ lines, subtotal, usage, rush, privacy, pieces, discount, total }) {
   let y = 35;
   const draw = [];
   const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh') : null;
@@ -376,7 +376,7 @@ function drawTicket({ lines, subtotal, usage, rush, visibility, pieces, discount
   }
   write('项目小计  ' + money(subtotal), { size: 14 });
   write('用途  ' + $('usage').selectedOptions[0].textContent.split(' ×')[0] + ' ×' + usage, { size: 14 });
-  write('公开设置  ' + $('visibility').selectedOptions[0].textContent + (visibility > 1 ? ' ×' + visibility : ''), { size: 14 });
+  write('公开设置  ' + ($('visibility').value === 'private' ? '不公开' : '可公开') + (privacy ? '（用途倍率 +' + privacy + '，实计 ×' + (usage + privacy) + '）' : ''), { size: 14 });
   if (rush > 1) write('加急  ' + $('rush').selectedOptions[0].textContent, { size: 14 });
   if (discount < 1) write('Set 折扣  ' + pieces + ' 件 · ' + (discount * 10) + ' 折', { size: 14 });
   rule('double');
@@ -412,7 +412,7 @@ function refresh() {
   $('usage-terms').textContent = terms[order.usage] || '';
   const eligible = order.usage === 'commercial' || order.usage === 'buyout';
   const discountText = eligible ? ' · Set ' + result.pieces + ' 件（' + (result.discount === 1 ? '原价' : result.discount * 10 + ' 折') + '）' : '';
-  $('billing-summary').textContent = '项目小计 × ' + result.usage + '（用途）× ' + result.visibility + '（公开）× ' + result.rush + '（加急）' + discountText;
+  $('billing-summary').textContent = '项目小计 × ' + (result.usage + result.privacy) + (result.privacy ? '（用途 ' + result.usage + ' + 不公开 ' + result.privacy + '）' : '（用途）') + ' × ' + result.rush + '（加急）' + discountText;
   result.lines.forEach((line, index) => {
     $('items').children[index].querySelector('output').textContent = money(line.amount);
   });

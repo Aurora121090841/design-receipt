@@ -13,6 +13,9 @@ assert.equal(quote([item('1', '', [glitter])], commercial).total, 7600);
 assert.equal(quote([item('1', '', [glitter, extras.waist])], buyout).total, 20250);
 assert.equal(quote([item()], { ...order, visibility: 'private', rush: 'days' }).total, 6600);
 
+assert.equal(quote([item('1', '', [extras.glitter])], { ...commercial, visibility: 'private' }).total, 7500);
+assert.equal(quote([item()], { ...buyout, visibility: 'private' }).total, 19250);
+
 for (const [pieces, discount] of [[5, 1], [6, 0.9], [8, 0.9], [9, 0.8]]) {
   const result = quote([item(String(pieces))], commercial);
   assert.equal(result.discount, discount);
