@@ -405,7 +405,6 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
     write(line.name.trim() || '自定义项目', { size: 18, bold: true, tag });
     const group = line.group.trim() ? ' · 同模组 ' + line.group.trim() : '';
     write(money(cents(line.price)) + ' × ' + (line.quantity || '0') + group, { size: 13, color: detailInk });
-    write('用途  ' + usageLabels[line.usage] + ' ×' + line.rate + (line.discount < 1 ? ' · Set ' + line.discount * 10 + ' 折' : ''), { size: 13 });
     if (line.note.trim()) write(line.note.trim(), { size: 13, color: detailInk });
     for (const extra of line.extras) {
       const quantity = extra.unit ? ' × ' + extra.quantity + extra.unit : '';
