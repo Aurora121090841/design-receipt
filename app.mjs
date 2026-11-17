@@ -359,7 +359,7 @@ function drawTicket({ lines, subtotal, usage, rush, privacy, pieces, discount, t
   y = start;
   write('#' + order.code, { align: 'right', size: 13, color: '#67586f' });
   y = Math.max(after, y);
-  write('截稿日期  ' + (order.deadline || '—'));
+  write('交稿日期  ' + (order.deadline || '—'));
   rule('dashed');
   if (!lines.length) write('添加设计项目后，费用明细会显示在这里。', { size: 13, color: '#67586f' });
   for (const line of lines) {
