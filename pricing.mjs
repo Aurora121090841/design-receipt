@@ -14,7 +14,7 @@ export function quote(items, order) {
     const quantity = Number(item.quantity);
     if (setEligible && quantity > 0) {
       if (group) groups.add(group);
-      else pieces += quantity;
+      else pieces += 1;
     }
     const base = usage === 'gift' ? 0 : cents(item.price) * quantity;
     const extras = item.extras.map(extra => {

@@ -1,4 +1,4 @@
-import { cents, money, quote, usageLabels } from './pricing.mjs?v=16';
+import { cents, money, quote, usageLabels } from './pricing.mjs?v=17';
 import { defaults, extras } from './catalog.mjs?v=8';
 
 const $ = id => document.getElementById(id);

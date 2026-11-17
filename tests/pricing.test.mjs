@@ -17,14 +17,14 @@ assert.equal(quote([item('1', '', [extras.glitter])], { ...commercial, visibilit
 assert.equal(quote([item()], { ...buyout, visibility: 'private' }).total, 19250);
 
 for (const [pieces, discount] of [[5, 1], [6, 0.9], [8, 0.9], [9, 0.8]]) {
-  const result = quote([item(String(pieces))], commercial);
+  const result = quote(Array.from({ length: pieces }, () => item()), commercial);
   assert.equal(result.discount, discount);
   assert.equal(result.total, Math.round(4400 * pieces * discount));
 }
 const grouped = quote([item('6', 'A'), item('1', ' A '), item('5')], commercial);
-assert.equal(grouped.pieces, 6);
+assert.equal(grouped.pieces, 2);
 assert.equal(grouped.subtotal, 26400);
-assert.equal(grouped.total, 47520);
+assert.equal(grouped.total, 52800);
 assert.equal(quote([item('9')], order).discount, 1);
 assert.equal(new Set(defaults.map(entry => entry.name)).size, defaults.length);
 assert.equal(defaults.find(entry => entry.name === '吧唧背卡 · 单面').price, '10');
@@ -36,10 +36,10 @@ const mixed = quote([
   { ...item('1', 'A', [extras.glitter]), usage: 'buyout' },
   { ...item('2', 'A'), usage: 'personal' }
 ], { ...order, visibility: 'private', rush: 'days', waiveCraft: true });
-assert.equal(mixed.pieces, 6);
-assert.deepEqual(mixed.lines.map(line => line.total), [68400, 53100, 13860, 13200]);
+assert.equal(mixed.pieces, 2);
+assert.deepEqual(mixed.lines.map(line => line.total), [68400, 59000, 15400, 13200]);
 assert.deepEqual(mixed.lines.slice(0, 3).map(line => Boolean(line.extras[0].waived)), [false, false, true]);
-assert.equal(mixed.total, 148560);
+assert.equal(mixed.total, 156000);
 
 const gift = { ...item('9', 'gift-group', [glitter]), usage: 'gift' };
 const giftOrder = { ...commercial, visibility: 'private', rush: 'day' };
@@ -48,3 +48,12 @@ assert.equal(quote([gift], giftOrder).subtotal, 0);
 assert.equal(quote([gift], giftOrder).pieces, 0);
 assert.equal(quote([gift, { ...item('5'), usage: 'commercial' }], giftOrder).discount, 1);
 assert.equal(quote([{ ...gift, usage: 'commercial' }], commercial).total, 42800);
+
+const repeated = quote([item('99')], commercial);
+assert.equal(repeated.pieces, 1);
+assert.equal(repeated.discount, 1);
+assert.equal(repeated.total, 435600);
+const sixDesigns = quote(Array.from({ length: 6 }, () => item('10')), commercial);
+assert.equal(sixDesigns.pieces, 6);
+assert.equal(sixDesigns.discount, 0.9);
+assert.equal(sixDesigns.total, 237600);
