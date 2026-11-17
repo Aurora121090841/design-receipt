@@ -1,16 +1,15 @@
 import { cents, money, quote } from './pricing.mjs';
+import { defaults, extras, terms } from './catalog.mjs';
 
 const $ = id => document.getElementById(id);
-const defaults = [
-  ['派单卡', '30'], ['小卡', '30'], ['明信片', '40'], ['单插立牌', '50'],
-  ['色纸', '50'], ['宣图', '80']
-].map(([name, price]) => ({ name, price }));
-const orderFields = ['client', 'deadline', 'note', 'usage', 'multiplier'];
+const orderFields = ['client', 'deadline', 'note', 'usage', 'multiplier', 'visibility', 'rush'];
+const orderChecks = ['waiveCraft', 'gift'];
 const brandFields = ['title', 'designer'];
 const key = 'design-receipt-v1';
 const newOrder = () => ({
   code: crypto.getRandomValues(new Uint32Array(1))[0].toString(36).toUpperCase(),
-  items: [], client: '', deadline: '', note: '', usage: 'personal', multiplier: '1'
+  items: [], client: '', deadline: '', note: '', usage: 'personal', multiplier: '1', visibility: 'public', rush: 'normal',
+  waiveCraft: false, gift: false
 });
 let saved;
 try {
@@ -18,16 +17,26 @@ try {
 } catch {
   saved = null;
 }
-let catalog = saved?.catalog ?? defaults;
-let customCatalog = saved?.customCatalog ?? false;
-let order = saved?.order ?? newOrder();
+function loadCatalog(snapshot) {
+  if (snapshot?.menuVersion) return snapshot.catalog ?? defaults;
+  if (!snapshot?.customCatalog) return defaults;
+  const customPrices = new Map(snapshot.catalog.map(entry => [entry.name, entry]));
+  const menu = defaults.map(entry => {
+    const custom = customPrices.get(entry.name);
+    customPrices.delete(entry.name);
+    return custom ? { ...entry, price: custom.price } : entry;
+  });
+  return menu.concat([...customPrices.values()]);
+}
+let catalog = loadCatalog(saved);
+let order = { ...newOrder(), ...saved?.order };
 let brand = saved?.brand ?? { title: '', designer: '', logo: '' };
 let logoImage;
 let logoRequest = 0;
 
 function save() {
   try {
-    localStorage.setItem(key, JSON.stringify({ catalog, customCatalog, order, brand }));
+    localStorage.setItem(key, JSON.stringify({ menuVersion: 1, catalog: catalog === defaults ? null : catalog, order, brand }));
     return true;
   } catch {
     $('status').textContent = '浏览器存储不可用或已满，本次修改可能无法保留。';
@@ -69,12 +78,36 @@ function addItem(template = { name: '', price: '0' }) {
   save();
 }
 function renderCatalog() {
-  $('price-hint').hidden = customCatalog;
-  $('catalog').replaceChildren(...catalog.map(template => {
-    const chip = button(template.name, () => addItem(template));
-    chip.append(node('small', '', money(cents(template.price))));
-    return chip;
-  }));
+  const groups = new Map();
+  const select = $('catalog');
+  const placeholder = new Option('选择品项与规格', '', true, true);
+  placeholder.disabled = true;
+  select.replaceChildren(placeholder);
+  catalog.forEach((template, index) => {
+    const category = template.category || '自定义';
+    if (!groups.has(category)) {
+      const group = node('optgroup');
+      group.label = category;
+      groups.set(category, group);
+      select.append(group);
+    }
+    const suffix = template.detail?.startsWith('¥') ? ' 起' : '';
+    groups.get(category).append(new Option(template.name + '  ' + money(cents(template.price)) + suffix, index));
+  });
+  $('add-catalog').disabled = true;
+}
+$('catalog').onchange = () => { $('add-catalog').disabled = !$('catalog').value; };
+$('add-catalog').onclick = () => {
+  const template = catalog[$('catalog').value];
+  if (template) addItem(template);
+};
+
+function addExtra(item, extra) {
+  item.extras.push({ ...extra });
+  renderItems();
+  const fields = $('items').children[order.items.indexOf(item)].querySelectorAll('.extra:last-of-type input');
+  fields[extra.unit ? 2 : 0]?.focus();
+  save();
 }
 function renderItems() {
   $('items').replaceChildren(...order.items.map((item, index) => {
@@ -93,11 +126,12 @@ function renderItems() {
     const fields = node('div', 'fields');
     fields.append(
       field('数量', item.quantity, update('quantity'), { type: 'number', min: 1, max: 999, step: 1, required: true }),
-      field('同模组', item.group, update('group'), { placeholder: '同模填相同组号', maxLength: 16 })
+      field('同模组号', item.group, update('group'), { placeholder: '同模填同一组号，折扣合计 1 件', maxLength: 16 })
     );
     card.append(header, fields, field('项目备注', item.note, update('note'), { maxLength: 150, placeholder: '单面 / 双面、尺寸等' }));
+    if (item.detail) card.append(node('small', '', item.detail));
     item.extras.forEach((extra, extraIndex) => {
-      const row = node('div', 'item-title');
+      const row = node('div', 'item-title extra');
       row.append(
         field('加项名称', extra.name, value => { extra.name = value; }, { ...textOptions, placeholder: '烫色、改稿、衍生等' }),
         field('加项费用（元）', extra.price, value => { extra.price = value; }, amountOptions),
@@ -107,15 +141,28 @@ function renderItems() {
           save();
         })
       );
+      if (extra.unit) {
+        row.append(field('计费数量（' + extra.unit + '）', extra.quantity, value => { extra.quantity = value; },
+          { type: 'number', min: 1, max: 999, step: 1, required: true }));
+      }
       card.append(row);
     });
     const footer = node('footer');
-    footer.append(button('＋ 工艺 / 增项', () => {
-      item.extras.push({ name: '', price: '0' });
-      renderItems();
-      $('items').children[index].querySelectorAll('.item-title:last-of-type input')[0]?.focus();
-      save();
-    }, 'add'), node('output'));
+    const craftOptions = node('select');
+    craftOptions.setAttribute('aria-label', '添加工艺或加项');
+    const placeholder = new Option('＋ 工艺 / 加项', '', true, true);
+    placeholder.disabled = true;
+    craftOptions.append(placeholder);
+    for (const id of ['glitter', 'foil', 'reverse', item.extra].filter(Boolean)) {
+      const extra = extras[id];
+      craftOptions.append(new Option(extra.name + ' ' + money(cents(extra.price)) + '/' + extra.unit, id));
+    }
+    craftOptions.append(new Option('自定义加项', 'custom'));
+    craftOptions.onchange = () => {
+      const extra = extras[craftOptions.value];
+      addExtra(item, extra ? { ...extra, quantity: '1' } : { name: '', price: '0' });
+    };
+    footer.append(craftOptions, node('output'));
     card.append(footer);
     return card;
   }));
@@ -124,20 +171,25 @@ function renderItems() {
 function syncFields() {
   for (const id of orderFields) $(id).value = order[id];
   for (const id of brandFields) $(id).value = brand[id];
-  $('multiplier').readOnly = order.usage !== 'custom';
+  for (const id of orderChecks) $(id).checked = order[id];
+  $('custom-rate').hidden = order.usage !== 'custom';
+  $('buyout-options').hidden = order.usage !== 'buyout';
 }
 for (const id of [...orderFields, ...brandFields]) {
   $(id).addEventListener('input', () => {
     const target = brandFields.includes(id) ? brand : order;
     target[id] = $(id).value;
-    if (id === 'usage') {
-      if (order.usage === 'personal') order.multiplier = '1';
-      if (order.usage === 'commercial') order.multiplier = '2';
-      syncFields();
-    }
+    if (id === 'usage') syncFields();
     refresh();
     save();
   });
+}
+for (const id of orderChecks) {
+  $(id).onchange = () => {
+    order[id] = $(id).checked;
+    refresh();
+    save();
+  };
 }
 $('reset').onclick = () => {
   if (order.items.length || order.client || order.deadline || order.note) {
@@ -153,6 +205,7 @@ $('custom').onclick = () => addItem();
 
 function priceRow(entry = { name: '', price: '' }) {
   const row = node('div', 'price-row');
+  row.original = entry;
   row.append(
     field('项目名称', entry.name, null, textOptions),
     field('单价（元）', entry.price, null, amountOptions),
@@ -173,19 +226,16 @@ $('price-form').onsubmit = event => {
   event.preventDefault();
   const next = [...$('price-rows').children].map(row => {
     const [name, price] = row.querySelectorAll('input');
-    return { name: name.value.trim(), price: price.value };
+    return { ...row.original, name: name.value.trim(), price: price.value };
   });
   if (next.some(entry => !entry.name)) {
     $('price-status').textContent = '请输入每个项目的名称。';
     return;
   }
   const previous = catalog;
-  const wasCustom = customCatalog;
   catalog = next;
-  customCatalog = true;
   if (!save()) {
     catalog = previous;
-    customCatalog = wasCustom;
     $('price-status').textContent = '保存失败，请检查浏览器存储。';
     return;
   }
@@ -243,7 +293,7 @@ const width = 420;
 const edge = 27;
 const end = width - edge;
 const font = getComputedStyle(document.documentElement).getPropertyValue('--serif');
-function drawTicket({ lines, subtotal, total }) {
+function drawTicket({ lines, subtotal, usage, rush, visibility, pieces, discount, total }) {
   let y = 35;
   const draw = [];
   const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh') : null;
@@ -314,23 +364,29 @@ function drawTicket({ lines, subtotal, total }) {
   if (!lines.length) write('添加设计项目后，费用明细会显示在这里。', { size: 13, color: '#67586f' });
   for (const line of lines) {
     write(line.name.trim() || '自定义项目', { size: 18, bold: true });
-    const group = line.group.trim() ? ' · 同模组 ' + line.group.trim() + (line.half ? '（半价）' : '（全价）') : '';
+    const group = line.group.trim() ? ' · 同模组 ' + line.group.trim() : '';
     write(money(cents(line.price)) + ' × ' + (line.quantity || '0') + group, { size: 13, color: '#67586f' });
     if (line.note.trim()) write(line.note.trim(), { size: 13, color: '#67586f' });
     for (const extra of line.extras) {
-      write('＋ ' + (extra.name.trim() || '增项') + '  ' + money(cents(extra.price)), { size: 13, color: '#67586f' });
+      const quantity = extra.unit ? ' × ' + extra.quantity + extra.unit : '';
+      write('＋ ' + (extra.name.trim() || '增项') + quantity + '  ' + (extra.waived ? '已免' : money(extra.amount)), { size: 13, color: '#67586f' });
     }
     write(money(line.amount), { size: 19, bold: true, align: 'right' });
     rule('solid');
   }
-  write('设计小计  ' + money(subtotal), { size: 14 });
-  write('用途倍率  ' + $('usage').selectedOptions[0].textContent + ' × ' + (order.multiplier || '0'), { size: 14 });
+  write('项目小计  ' + money(subtotal), { size: 14 });
+  write('用途  ' + $('usage').selectedOptions[0].textContent.split(' ×')[0] + ' ×' + usage, { size: 14 });
+  write('公开设置  ' + $('visibility').selectedOptions[0].textContent + (visibility > 1 ? ' ×' + visibility : ''), { size: 14 });
+  if (rush > 1) write('加急  ' + $('rush').selectedOptions[0].textContent, { size: 14 });
+  if (discount < 1) write('Set 折扣  ' + pieces + ' 件 · ' + (discount * 10) + ' 折', { size: 14 });
   rule('double');
   write('合计', { size: 17, bold: true });
   y -= 25;
   write(money(total), { size: 24, bold: true, align: 'right' });
-  if (order.note.trim() || brand.designer.trim()) {
+  if (terms[order.usage] || order.note.trim() || brand.designer.trim()) {
     rule('dashed');
+    if (terms[order.usage]) write(terms[order.usage], { size: 13 });
+    if (order.usage === 'buyout' && order.gift) write('本单随机赠制品', { size: 13 });
     if (order.note.trim()) write('备注  ' + order.note.trim(), { size: 13 });
     if (brand.designer.trim()) write('受托人  ' + brand.designer.trim(), { size: 13 });
   }
@@ -352,9 +408,13 @@ function drawTicket({ lines, subtotal, total }) {
   return true;
 }
 function refresh() {
-  const result = quote(order.items, order.multiplier);
+  const result = quote(order.items, order);
+  $('usage-terms').textContent = terms[order.usage] || '';
+  const eligible = order.usage === 'commercial' || order.usage === 'buyout';
+  const discountText = eligible ? ' · Set ' + result.pieces + ' 件（' + (result.discount === 1 ? '原价' : result.discount * 10 + ' 折') + '）' : '';
+  $('billing-summary').textContent = '项目小计 × ' + result.usage + '（用途）× ' + result.visibility + '（公开）× ' + result.rush + '（加急）' + discountText;
   result.lines.forEach((line, index) => {
-    $('items').children[index].querySelector('output').textContent = (line.half ? '半价 · ' : '') + money(line.amount);
+    $('items').children[index].querySelector('output').textContent = money(line.amount);
   });
   const fits = drawTicket(result);
   canvas.hidden = !fits;
@@ -362,7 +422,7 @@ function refresh() {
   $('status').textContent = fits ? '' : '内容过长，请拆成两张小票。';
 }
 $('download').onclick = () => {
-  const controls = [...document.querySelectorAll('#items input, #multiplier')];
+  const controls = [...document.querySelectorAll('#items input, #custom-rate:not([hidden]) input')];
   const invalid = controls.find(input => !input.checkValidity() || (input.required && !input.value.trim()));
   if (invalid) {
     invalid.focus();

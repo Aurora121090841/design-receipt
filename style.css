@@ -60,3 +60,10 @@ dialog .primary{margin-top:13px}
 
 .top-actions{display:flex;gap:7px}.jump{display:none;text-decoration:none;color:var(--accent)}
 @media(max-width:760px){.jump{display:inline-block}}
+
+.catalog{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end}
+.catalog button{min-height:40px}
+.item footer select{width:auto;max-width:80%}
+.check{display:flex;align-items:center;gap:7px}
+.check input{width:auto;margin:0}
+#price-rows{max-height:47vh;overflow:auto;padding:0 4px}
