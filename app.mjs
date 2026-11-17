@@ -1,4 +1,4 @@
-import { cents, money, quote } from './pricing.mjs?v=3';
+import { cents, money, quote, usageLabels } from './pricing.mjs?v=6';
 import { defaults, extras, terms } from './catalog.mjs';
 
 const $ = id => document.getElementById(id);
@@ -128,6 +128,20 @@ function renderItems() {
       field('数量', item.quantity, update('quantity'), { type: 'number', min: 1, max: 999, step: 1, required: true }),
       field('同模组号', item.group, update('group'), { placeholder: '同模填同一组号，折扣合计 1 件', maxLength: 16 })
     );
+    const usageField = node('label', '', '制品用途');
+    const usageSelect = node('select');
+    usageSelect.append(new Option('跟随默认用途', ''));
+    for (const id of ['personal', 'commercial', 'buyout']) {
+      usageSelect.append(new Option(usageLabels[id], id));
+    }
+    usageSelect.value = item.usage || '';
+    usageSelect.onchange = () => {
+      item.usage = usageSelect.value;
+      refresh();
+      save();
+    };
+    usageField.append(usageSelect);
+    fields.append(usageField);
     card.append(header, fields, field('项目备注', item.note, update('note'), { maxLength: 150, placeholder: '单面 / 双面、尺寸等' }));
     if (item.detail) card.append(node('small', '', item.detail));
     item.extras.forEach((extra, extraIndex) => {
@@ -173,7 +187,6 @@ function syncFields() {
   for (const id of brandFields) $(id).value = brand[id];
   for (const id of orderChecks) $(id).checked = order[id];
   $('custom-rate').hidden = order.usage !== 'custom';
-  $('buyout-options').hidden = order.usage !== 'buyout';
 }
 for (const id of [...orderFields, ...brandFields]) {
   $(id).addEventListener('input', () => {
@@ -293,7 +306,7 @@ const width = 420;
 const edge = 27;
 const end = width - edge;
 const font = getComputedStyle(document.documentElement).getPropertyValue('--serif');
-function drawTicket({ lines, subtotal, usage, rush, privacy, pieces, discount, total }) {
+function drawTicket({ lines, subtotal, rush, privacy, pieces, discount, total }) {
   let y = 35;
   const draw = [];
   const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh') : null;
@@ -366,27 +379,30 @@ function drawTicket({ lines, subtotal, usage, rush, privacy, pieces, discount, t
     write(line.name.trim() || '自定义项目', { size: 18, bold: true });
     const group = line.group.trim() ? ' · 同模组 ' + line.group.trim() : '';
     write(money(cents(line.price)) + ' × ' + (line.quantity || '0') + group, { size: 13, color: '#67586f' });
+    write('用途  ' + usageLabels[line.usage] + ' ×' + line.rate + (line.discount < 1 ? ' · Set ' + line.discount * 10 + ' 折' : ''), { size: 13 });
     if (line.note.trim()) write(line.note.trim(), { size: 13, color: '#67586f' });
     for (const extra of line.extras) {
       const quantity = extra.unit ? ' × ' + extra.quantity + extra.unit : '';
       write('＋ ' + (extra.name.trim() || '增项') + quantity + '  ' + (extra.waived ? '已免' : money(extra.amount)), { size: 13, color: '#67586f' });
     }
-    write(money(line.amount), { size: 19, bold: true, align: 'right' });
+    write(money(line.total), { size: 19, bold: true, align: 'right' });
     rule('solid');
   }
   write('项目小计  ' + money(subtotal), { size: 14 });
-  write('用途  ' + $('usage').selectedOptions[0].textContent.split(' ×')[0] + ' ×' + usage, { size: 14 });
-  write('公开设置  ' + ($('visibility').value === 'private' ? '不公开' : '可公开') + (privacy ? '（用途倍率 +' + privacy + '，实计 ×' + (usage + privacy) + '）' : ''), { size: 14 });
+  write('公开设置  ' + ($('visibility').value === 'private' ? '不公开' : '可公开') + (privacy ? '（各项用途倍率 +' + privacy + '）' : ''), { size: 14 });
   if (rush > 1) write('加急  ' + $('rush').selectedOptions[0].textContent, { size: 14 });
   if (discount < 1) write('Set 折扣  ' + pieces + ' 件 · ' + (discount * 10) + ' 折', { size: 14 });
   rule('double');
   write('合计', { size: 17, bold: true });
   y -= 25;
   write(money(total), { size: 24, bold: true, align: 'right' });
-  if (terms[order.usage] || order.note.trim() || brand.designer.trim()) {
+  const usages = new Set(lines.map(line => line.usage));
+  if ([...usages].some(usage => terms[usage]) || order.note.trim() || brand.designer.trim()) {
     rule('dashed');
-    if (terms[order.usage]) write(terms[order.usage], { size: 13 });
-    if (order.usage === 'buyout' && order.gift) write('本单随机赠制品', { size: 13 });
+    for (const usage of usages) {
+      if (terms[usage]) write(usageLabels[usage] + '  ' + terms[usage], { size: 13 });
+    }
+    if (usages.has('buyout') && order.gift) write('本单随机赠制品', { size: 13 });
     if (order.note.trim()) write('备注  ' + order.note.trim(), { size: 13 });
     if (brand.designer.trim()) write('受托人  ' + brand.designer.trim(), { size: 13 });
   }
@@ -409,8 +425,9 @@ function drawTicket({ lines, subtotal, usage, rush, privacy, pieces, discount, t
 }
 function refresh() {
   const result = quote(order.items, order);
+  $('buyout-options').hidden = !result.lines.some(line => line.usage === 'buyout');
   result.lines.forEach((line, index) => {
-    $('items').children[index].querySelector('output').textContent = money(line.amount);
+    $('items').children[index].querySelector('output').textContent = money(line.total);
   });
   const fits = drawTicket(result);
   canvas.hidden = !fits;

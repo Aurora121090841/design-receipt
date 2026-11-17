@@ -29,3 +29,14 @@ assert.equal(quote([item('9')], order).discount, 1);
 assert.equal(new Set(defaults.map(entry => entry.name)).size, defaults.length);
 assert.equal(defaults.find(entry => entry.name === '吧唧背卡 · 单面').price, '10');
 assert.equal(defaults.find(entry => entry.name === '月历 · 13 张正反').price, '80');
+
+const mixed = quote([
+  { ...item('10', '', [extras.glitter]), usage: 'personal' },
+  { ...item('5', '', [extras.glitter]), usage: 'commercial' },
+  { ...item('1', 'A', [extras.glitter]), usage: 'buyout' },
+  { ...item('2', 'A'), usage: 'personal' }
+], { ...order, visibility: 'private', rush: 'days', waiveCraft: true });
+assert.equal(mixed.pieces, 6);
+assert.deepEqual(mixed.lines.map(line => line.total), [68400, 53100, 13860, 13200]);
+assert.deepEqual(mixed.lines.slice(0, 3).map(line => Boolean(line.extras[0].waived)), [false, false, true]);
+assert.equal(mixed.total, 148560);

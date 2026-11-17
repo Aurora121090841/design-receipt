@@ -6,7 +6,7 @@
   <meta name="description" content="为美工约稿计算报价、定制票头并导出 PNG 小票。">
   <title>美工约稿小票</title>
   <link rel="stylesheet" href="style.css?v=2">
-  <script type="module" src="app.mjs?v=5"></script>
+  <script type="module" src="app.mjs?v=6"></script>
 </head>
 <body>
   <header class="masthead">
@@ -34,12 +34,12 @@
         <section class="panel">
           <h2>用途计价</h2>
           <div class="fields">
-            <label>用途<select id="usage"><option value="personal">个人自用</option><option value="commercial">商用 ×2</option><option value="buyout">买断 ×3</option><option value="custom">自定义</option></select></label>
+            <label>默认用途<select id="usage"><option value="personal">个人自用</option><option value="commercial">商用 ×2</option><option value="buyout">买断 ×3</option><option value="custom">自定义</option></select></label>
             <label id="custom-rate" hidden>用途倍率<input id="multiplier" type="number" inputmode="decimal" min="0.01" max="100" step="0.01" required></label>
             <label>公开设置<select id="visibility"><option value="public">可公开</option><option value="private">不公开（用途倍率 +0.5）</option></select></label>
             <label>交付速度<select id="rush"><option value="normal">常规排期</option><option value="days">3 天内 ×2</option><option value="day">24 小时内 ×2.5</option></select></label>
           </div>
-          <div id="buyout-options" class="fields" hidden><label class="check"><input type="checkbox" id="waiveCraft">本单免工艺费</label><label class="check"><input type="checkbox" id="gift">本单随机赠制品</label></div>
+          <div id="buyout-options" class="fields" hidden><label class="check"><input type="checkbox" id="waiveCraft">买断制品免工艺费</label><label class="check"><input type="checkbox" id="gift">本单随机赠制品</label></div>
         </section>
         <section class="panel">
           <h2>小票抬头</h2>
