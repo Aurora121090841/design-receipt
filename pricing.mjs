@@ -1,7 +1,7 @@
 export const cents = value => Math.round((Number(value) || 0) * 100);
 export const money = amount => '¥' + (amount / 100).toFixed(2);
-export const usageRates = { personal: 1, commercial: 2, buyout: 3 };
-export const usageLabels = { personal: '个人自用', commercial: '商用', buyout: '买断', custom: '自定义' };
+export const usageRates = { personal: 1, commercial: 2, buyout: 3, gift: 0 };
+export const usageLabels = { personal: '个人自用', commercial: '商用', buyout: '买断', custom: '自定义', gift: '赠品' };
 export const rushRates = { normal: 1, days: 2, day: 2.5 };
 
 export function quote(items, order) {
@@ -16,9 +16,9 @@ export function quote(items, order) {
       if (group) groups.add(group);
       else pieces += quantity;
     }
-    const base = cents(item.price) * quantity;
+    const base = usage === 'gift' ? 0 : cents(item.price) * quantity;
     const extras = item.extras.map(extra => {
-      const waived = usage === 'buyout' && order.waiveCraft && extra.craft;
+      const waived = usage === 'gift' || (usage === 'buyout' && order.waiveCraft && extra.craft);
       return { ...extra, waived, amount: waived ? 0 : cents(extra.price) * Number(extra.quantity ?? 1) };
     });
     const amount = extras.reduce((sum, extra) => sum + extra.amount, base);
@@ -32,7 +32,7 @@ export function quote(items, order) {
   let running = 0;
   let total = 0;
   for (const line of lines) {
-    line.rate = (usageRates[line.usage] ?? cents(order.multiplier) / 100) + privacy;
+    line.rate = line.usage === 'gift' ? 0 : (usageRates[line.usage] ?? cents(order.multiplier) / 100) + privacy;
     line.discount = line.setEligible ? discount : 1;
     const factor = Math.round(line.rate * rush * line.discount * 100000);
     running += line.amount * factor / 100000;

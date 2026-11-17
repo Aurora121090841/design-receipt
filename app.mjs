@@ -1,4 +1,4 @@
-import { cents, money, quote, usageLabels } from './pricing.mjs?v=6';
+import { cents, money, quote, usageLabels } from './pricing.mjs?v=16';
 import { defaults, extras } from './catalog.mjs?v=8';
 
 const $ = id => document.getElementById(id);
@@ -149,7 +149,7 @@ function renderItems() {
     const usageField = node('label', '', '制品用途');
     const usageSelect = node('select');
     usageSelect.append(new Option('跟随默认用途', ''));
-    for (const id of ['personal', 'commercial', 'buyout']) {
+    for (const id of ['personal', 'commercial', 'buyout', 'gift']) {
       usageSelect.append(new Option(usageLabels[id], id));
     }
     usageSelect.value = item.usage || '';
@@ -469,7 +469,7 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
     const tag = line.usage === 'personal' ? '自用' : usageLabels[line.usage];
     write(line.name.trim() || '自定义项目', { size: 18, bold: true, tag });
     const group = line.group.trim() ? ' · 同模组 ' + line.group.trim() : '';
-    write(money(cents(line.price)) + ' × ' + (line.quantity || '0') + group, { size: 13, color: detailInk });
+    write(money(line.usage === 'gift' ? 0 : cents(line.price)) + ' × ' + (line.quantity || '0') + group, { size: 13, color: detailInk });
     if (line.note.trim()) write(line.note.trim(), { size: 13, color: detailInk });
     for (const extra of line.extras) {
       const quantity = extra.unit ? ' × ' + extra.quantity + extra.unit : '';

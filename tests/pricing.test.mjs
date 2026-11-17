@@ -40,3 +40,11 @@ assert.equal(mixed.pieces, 6);
 assert.deepEqual(mixed.lines.map(line => line.total), [68400, 53100, 13860, 13200]);
 assert.deepEqual(mixed.lines.slice(0, 3).map(line => Boolean(line.extras[0].waived)), [false, false, true]);
 assert.equal(mixed.total, 148560);
+
+const gift = { ...item('9', 'gift-group', [glitter]), usage: 'gift' };
+const giftOrder = { ...commercial, visibility: 'private', rush: 'day' };
+assert.equal(quote([gift], giftOrder).total, 0);
+assert.equal(quote([gift], giftOrder).subtotal, 0);
+assert.equal(quote([gift], giftOrder).pieces, 0);
+assert.equal(quote([gift, { ...item('5'), usage: 'commercial' }], giftOrder).discount, 1);
+assert.equal(quote([{ ...gift, usage: 'commercial' }], commercial).total, 42800);
