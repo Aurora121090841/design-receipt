@@ -4,7 +4,8 @@ import { defaults, extras } from './catalog.mjs?v=8';
 const $ = id => document.getElementById(id);
 const orderFields = ['client', 'deadline', 'note', 'usage', 'multiplier', 'visibility', 'rush'];
 const orderChecks = ['waiveCraft', 'gift'];
-const brandFields = ['title', 'designer'];
+const defaultColors = { paper: '#fffdf8', ink: '#322b36' };
+const brandFields = ['title', 'designer', ...Object.keys(defaultColors)];
 const key = 'design-receipt-v1';
 const newOrder = () => ({
   code: crypto.getRandomValues(new Uint32Array(1))[0].toString(36).toUpperCase(),
@@ -30,7 +31,7 @@ function loadCatalog(snapshot) {
 }
 let catalog = loadCatalog(saved);
 let order = { ...newOrder(), ...saved?.order };
-let brand = saved?.brand ?? { title: '', designer: '', logo: '' };
+let brand = { title: '', designer: '', logo: '', ...defaultColors, ...saved?.brand };
 let logoImage;
 let logoRequest = 0;
 
@@ -204,6 +205,13 @@ for (const id of orderChecks) {
     save();
   };
 }
+$('reset-colors').onclick = () => {
+  Object.assign(brand, defaultColors);
+  syncFields();
+  refresh();
+  save();
+};
+
 $('reset').onclick = () => {
   if (order.items.length || order.client || order.deadline || order.note) {
     if (!confirm('清空当前委托和项目，开始一张新小票？')) return;
@@ -308,9 +316,12 @@ const end = width - edge;
 const font = getComputedStyle(document.documentElement).getPropertyValue('--serif');
 function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
   let y = 35;
+  const { paper, ink } = brand;
+  const defaultInk = ink === defaultColors.ink && paper === defaultColors.paper;
+  const detailInk = defaultInk ? '#67586f' : ink;
   const draw = [];
   const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh') : null;
-  function write(text, { size = 15, bold = false, align = 'left', color = '#322b36', max = end - edge, tag = '' } = {}) {
+  function write(text, { size = 15, bold = false, align = 'left', color = ink, max = end - edge, tag = '' } = {}) {
     const type = (bold ? '700 ' : '400 ') + size + 'px ' + font;
     const tagFont = '400 16px ' + font;
     ctx.font = tagFont;
@@ -329,12 +340,12 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
           ctx.fillStyle = color;
           ctx.fillText(value, align === 'center' ? width / 2 : align === 'right' ? end : edge, baseline);
           if (withTag) {
-            ctx.fillStyle = '#000';
+            ctx.fillStyle = defaultInk ? '#000' : ink;
             ctx.fillRect(tagX, baseline + 1, tagWidth, 20);
             ctx.font = tagFont;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#fffdf8';
+            ctx.fillStyle = paper;
             ctx.fillText(tag, tagX + tagWidth / 2, baseline + 11);
           }
         });
@@ -355,7 +366,7 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
     y += 7;
     const at = y;
     draw.push(() => {
-      ctx.strokeStyle = kind === 'double' ? '#322b36' : '#a599ad';
+      ctx.strokeStyle = kind === 'double' || !defaultInk ? ink : '#a599ad';
       ctx.setLineDash(kind === 'dashed' ? [4, 4] : []);
       ctx.beginPath();
       ctx.moveTo(edge, at);
@@ -377,28 +388,28 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
     draw.push(() => ctx.drawImage(logoImage, (width - w) / 2, top, w, h));
     y += h + 3;
   } else {
-    write(brand.title.trim() || '定 制 票 据', { size: 30, bold: true, align: 'center' });
+    write(brand.title.trim() || '定 制 票 据', { size: 30, bold: true, align: 'center', color: defaultColors.ink });
   }
   rule('double');
   const start = y;
   write('委托人  ' + (order.client.trim() || '—'), { max: 255 });
   const after = y;
   y = start;
-  write('#' + order.code, { align: 'right', size: 13, color: '#67586f' });
+  write('#' + order.code, { align: 'right', size: 13, color: detailInk });
   y = Math.max(after, y);
   write('交稿日期  ' + (order.deadline || '—'));
   rule('dashed');
-  if (!lines.length) write('添加设计项目后，费用明细会显示在这里。', { size: 13, color: '#67586f' });
+  if (!lines.length) write('添加设计项目后，费用明细会显示在这里。', { size: 13, color: detailInk });
   for (const line of lines) {
     const tag = line.usage === 'personal' ? '自用' : usageLabels[line.usage];
     write(line.name.trim() || '自定义项目', { size: 18, bold: true, tag });
     const group = line.group.trim() ? ' · 同模组 ' + line.group.trim() : '';
-    write(money(cents(line.price)) + ' × ' + (line.quantity || '0') + group, { size: 13, color: '#67586f' });
+    write(money(cents(line.price)) + ' × ' + (line.quantity || '0') + group, { size: 13, color: detailInk });
     write('用途  ' + usageLabels[line.usage] + ' ×' + line.rate + (line.discount < 1 ? ' · Set ' + line.discount * 10 + ' 折' : ''), { size: 13 });
-    if (line.note.trim()) write(line.note.trim(), { size: 13, color: '#67586f' });
+    if (line.note.trim()) write(line.note.trim(), { size: 13, color: detailInk });
     for (const extra of line.extras) {
       const quantity = extra.unit ? ' × ' + extra.quantity + extra.unit : '';
-      write('＋ ' + (extra.name.trim() || '增项') + quantity + '  ' + (extra.waived ? '已免' : money(extra.amount)), { size: 13, color: '#67586f' });
+      write('＋ ' + (extra.name.trim() || '增项') + quantity + '  ' + (extra.waived ? '已免' : money(extra.amount)), { size: 13, color: detailInk });
     }
     write(money(line.total), { size: 19, bold: true, align: 'right' });
     rule('solid');
@@ -423,7 +434,7 @@ function drawTicket({ lines, subtotal, rush, pieces, discount, total }) {
   canvas.width = width * 2;
   canvas.height = Math.ceil(y) * 2;
   ctx.scale(2, 2);
-  ctx.fillStyle = '#fffdf8';
+  ctx.fillStyle = paper;
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(width, 0);

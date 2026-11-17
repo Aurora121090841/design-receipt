@@ -67,3 +67,4 @@ dialog .primary{margin-top:13px}
 .check{display:flex;align-items:center;gap:7px}
 .check input{width:auto;margin:0}
 #price-rows{max-height:47vh;overflow:auto;padding:0 4px}
+input[type="color"]{height:40px;padding:4px;cursor:pointer}

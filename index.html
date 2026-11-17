@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="为美工约稿计算报价、定制票头并导出 PNG 小票。">
   <title>美工约稿小票</title>
-  <link rel="stylesheet" href="style.css?v=2">
-  <script type="module" src="app.mjs?v=8"></script>
+  <link rel="stylesheet" href="style.css?v=9">
+  <script type="module" src="app.mjs?v=9"></script>
 </head>
 <body>
   <header class="masthead">
@@ -50,6 +50,13 @@
           <div class="art"><label class="upload">↑ 上传抬头图案<input id="logo" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><button id="remove-logo" class="quiet" hidden>移除图案</button></div>
           <p class="hint">上传后，图片替换票头文字。支持透明 PNG，抬头会保存在当前浏览器。</p>
           <p class="hint" id="logo-status" role="status"></p>
+        </section>
+        <section class="panel">
+          <div class="heading"><h2>票面配色</h2><button id="reset-colors" class="quiet">恢复默认</button></div>
+          <div class="fields">
+            <label>纸张颜色<input id="paper" type="color" value="#fffdf8"></label>
+            <label>正文颜色<input id="ink" type="color" value="#322b36"></label>
+          </div>
         </section>
       </div>
       <aside id="preview" class="preview">
