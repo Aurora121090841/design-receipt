@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="为美工约稿计算报价、定制票头并导出 PNG 小票。">
+  <title>美工约稿小票</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="wrap top"><span class="brand"><span aria-hidden="true">✳</span> 约稿工作台</span><div class="top-actions"><a href="#preview" class="quiet jump">看小票</a><button id="reset" class="quiet">新建小票</button></div></div>
+  </header>
+  <main class="wrap">
+    <div class="intro"><h1>美工约稿小票</h1><p>选好设计项目，自动算价，出一张送给客妹的小票。</p></div>
+    <div class="workspace">
+      <div class="editor">
+        <section class="panel">
+          <h2>委托信息</h2>
+          <div class="fields">
+            <label>委托人<input id="client" placeholder="客妹的昵称" maxlength="60"></label>
+            <label>截稿日期<input id="deadline" type="date"></label>
+          </div>
+          <label>整单备注<textarea id="note" rows="2" placeholder="尺寸、交付格式或其他约定" maxlength="500"></textarea></label>
+        </section>
+        <section class="panel">
+          <div class="heading"><h2>设计项目</h2><button id="settings" class="quiet">编辑常用报价</button></div>
+          <p class="hint" id="price-hint">当前为示例价格，首次使用请录入你的报价。</p>
+          <div id="catalog" class="catalog"></div>
+          <div id="items"></div>
+          <button id="custom" class="add">＋ 自定义项目</button>
+        </section>
+        <section class="panel">
+          <h2>用途计价</h2>
+          <div class="fields">
+            <label>用途<select id="usage"><option value="personal">个人自用</option><option value="commercial">商用 / 贩售</option><option value="custom">自定义</option></select></label>
+            <label>用途倍率<input id="multiplier" type="number" inputmode="decimal" min="0.01" max="100" step="0.01" required></label>
+          </div>
+          <p class="hint">设计费与加项的小计之和 × 用途倍率。</p>
+        </section>
+        <section class="panel">
+          <h2>小票抬头</h2>
+          <div class="fields">
+            <label>票头文字<input id="title" placeholder="定制票据" maxlength="40"></label>
+            <label>署名<input id="designer" placeholder="美工 / 工作室名称" maxlength="60"></label>
+          </div>
+          <div class="art"><label class="upload">↑ 上传抬头图案<input id="logo" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><button id="remove-logo" class="quiet" hidden>移除图案</button></div>
+          <p class="hint">上传后，图片替换票头文字。支持透明 PNG，抬头会保存在当前浏览器。</p>
+          <p class="hint" id="logo-status" role="status"></p>
+        </section>
+      </div>
+      <aside id="preview" class="preview">
+        <div class="preview-top"><h2>小票预览</h2><span><span class="dot"></span> 实时更新</span></div>
+        <div class="stage"><canvas id="ticket" role="img" aria-label="美工约稿小票预览"></canvas></div>
+        <div class="export"><button id="download" class="primary">↓ 下载 PNG 小票</button><p class="hint" id="status" role="status"></p></div>
+      </aside>
+    </div>
+  </main>
+  <dialog id="price-dialog">
+    <form id="price-form">
+      <div class="heading"><h2>常用报价</h2><button type="button" id="close" class="quiet" aria-label="关闭">✕</button></div>
+      <p class="hint">录入常用项目和单价。保存后可在这个浏览器反复选用，已加入小票的项目按原单价保留。</p>
+      <div id="price-rows"></div>
+      <button type="button" id="add-price" class="add">＋ 新增报价</button>
+      <button class="primary" type="submit">保存报价</button>
+      <p class="hint" id="price-status" role="status"></p>
+    </form>
+  </dialog>
+</body>
+</html>
